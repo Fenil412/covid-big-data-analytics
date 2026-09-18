@@ -216,3 +216,48 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large datasets
+dataset/raw/
+dataset/processed/
+*.csv
+*.parquet
+*.json
+
+# Output files
+output/raw/
+output/processed/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment/secrets
+.env
+*.pem
+*.key
+
+# Spark
+spark-warehouse/
+metastore_db/

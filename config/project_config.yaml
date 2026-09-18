@@ -1,0 +1,22 @@
+project:
+  name: covid-big-data-analytics
+  version: 1.0
+
+cluster:
+  master: master
+  workers:
+    - worker1
+    - worker2
+
+hdfs:
+  raw_path: /covid/raw
+  processed_path: /covid/processed
+  output_path: /covid/output
+
+mongodb:
+  database: covid_analytics
+  collections:
+    - country_summary
+    - daily_summary
+    - vaccination_summary
+    - hospitalization_summary

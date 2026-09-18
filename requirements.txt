@@ -1,0 +1,8 @@
+pyspark
+pymongo
+pandas
+numpy
+matplotlib
+plotly
+jupyter
+pytest
