@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  hdfs-site.xml — HDFS Configuration
+  Project: COVID-19 Big Data Analytics Platform
+  Author:  Fenil Chodvadiya (Member 1 — Lead Data Engineer)
+-->
+<configuration>
+
+  <!-- Replication factor across 2 worker nodes -->
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+    <description>Data is replicated across both worker nodes for fault tolerance</description>
+  </property>
+
+  <!-- NameNode data directory -->
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:///hadoop/dfs/name</value>
+    <description>Directory where NameNode stores its metadata</description>
+  </property>
+
+  <!-- DataNode data directory -->
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:///hadoop/dfs/data</value>
+    <description>Directory where DataNodes store block data</description>
+  </property>
+
+  <!-- Block size: 128 MB -->
+  <property>
+    <name>dfs.blocksize</name>
+    <value>134217728</value>
+    <description>HDFS block size: 128 MB</description>
+  </property>
+
+  <!-- HDFS Web UI port -->
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>master:9870</value>
+  </property>
+
+  <!-- Allow DataNodes from any host -->
+  <property>
+    <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+    <value>false</value>
+  </property>
+
+  <!-- Secondary NameNode -->
+  <property>
+    <name>dfs.namenode.secondary.http-address</name>
+    <value>master:9868</value>
+  </property>
+
+</configuration>
