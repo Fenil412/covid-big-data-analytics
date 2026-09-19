@@ -227,6 +227,9 @@ __pycache__/
 venv/
 .venv/
 env/
+.env/
+# Prevent venv from being accidentally staged
+venv/**
 
 # Jupyter
 .ipynb_checkpoints/

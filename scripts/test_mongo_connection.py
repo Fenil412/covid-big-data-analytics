@@ -1,5 +1,5 @@
 """
-test_mongo_connection.py — MongoDB Atlas Connection Tester
+test_mongo_connection.py -- MongoDB Atlas Connection Tester
 Project: COVID-19 Big Data Analytics Platform
 Author:  Fenil Chodvadiya (Member 1 — Lead Data Engineer)
 
@@ -13,6 +13,11 @@ Make sure your .env file has MONGODB_ATLAS_URI set correctly before running.
 
 import os
 import sys
+import io
+
+# Force UTF-8 output on Windows to avoid cp1252 encoding errors
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 from datetime import datetime
 
 # Load .env
@@ -39,16 +44,16 @@ CYAN   = "\033[96m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-def ok(msg):    print(f"  {GREEN}✓  {msg}{RESET}")
-def fail(msg):  print(f"  {RED}✗  {msg}{RESET}")
-def info(msg):  print(f"  {CYAN}ℹ  {msg}{RESET}")
-def warn(msg):  print(f"  {YELLOW}⚠  {msg}{RESET}")
+def ok(msg):    print(f"  {GREEN}[OK]  {msg}{RESET}")
+def fail(msg):  print(f"  {RED}[FAIL] {msg}{RESET}")
+def info(msg):  print(f"  {CYAN}[INFO] {msg}{RESET}")
+def warn(msg):  print(f"  {YELLOW}[WARN] {msg}{RESET}")
 
 
 def main():
     print()
     print(f"{BOLD}{'='*55}{RESET}")
-    print(f"{BOLD}   MongoDB Atlas — Connection Test{RESET}")
+    print(f"{BOLD}   MongoDB Atlas - Connection Test{RESET}")
     print(f"{BOLD}{'='*55}{RESET}")
     print()
 
@@ -141,7 +146,7 @@ def main():
             "tested_by": "Fenil Chodvadiya"
         }
         result = test_col.insert_one(doc)
-        ok(f"Write successful (inserted _id: {result.inserted_id})")
+        ok(f"Write successful (doc inserted to Atlas)")
         test_col.delete_one({"_id": result.inserted_id})
         ok("Cleanup successful (test document deleted).")
     except Exception as e:
@@ -152,7 +157,7 @@ def main():
     client.close()
     print()
     print(f"{BOLD}{'='*55}{RESET}")
-    print(f"{GREEN}{BOLD}  ✓  ALL CHECKS PASSED — MongoDB Atlas is ready!{RESET}")
+    print(f"{GREEN}{BOLD}  [ALL CHECKS PASSED] MongoDB Atlas is ready!{RESET}")
     print(f"{BOLD}{'='*55}{RESET}")
     print()
 
