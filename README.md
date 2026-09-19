@@ -1,7 +1,7 @@
 # Distributed COVID-19 Big Data Analytics Platform
 
 A distributed Big Data analytics platform for processing historical
-COVID-19 data using a 3-node Hadoop HDFS cluster, Apache Spark, and MongoDB.
+COVID-19 data using a 3-node Hadoop HDFS cluster, Apache Spark, and **MongoDB Atlas**.
 
 ---
 
@@ -9,12 +9,13 @@ COVID-19 data using a 3-node Hadoop HDFS cluster, Apache Spark, and MongoDB.
 
 This project processes **Google COVID-19 Open Data** using a distributed
 3-node Hadoop cluster (1 Master + 2 Workers) deployed via Docker.
+Analytics results are stored in **MongoDB Atlas** (cloud-hosted NoSQL).
 
 The pipeline covers:
 1. **Data Ingestion** — Download CSV data and upload to HDFS
 2. **Distributed Processing** — Clean & transform data using PySpark
 3. **Analytics** — Compute country-level and daily COVID statistics
-4. **Storage** — Store results in MongoDB collections
+4. **Storage** — Store results in MongoDB Atlas collections
 5. **Visualization** — Explore results via Jupyter Notebook
 
 ---
@@ -39,7 +40,7 @@ Google COVID-19 Open Data (CSV)
    ├── data_cleaner.py
    └── covid_analyzer.py
             ↓
-      MongoDB (NoSQL)
+     MongoDB Atlas (Cloud)
    ├── country_summary
    ├── daily_summary
    ├── vaccination_summary
@@ -73,7 +74,7 @@ https://github.com/GoogleCloudPlatform/covid-19-open-data
 |---|---|
 | Hadoop HDFS 3.3.6 | Distributed storage |
 | Apache Spark / PySpark | Distributed data processing |
-| MongoDB 6.0 | NoSQL results storage |
+| **MongoDB Atlas** | Cloud-hosted NoSQL results storage |
 | Python 3.10 | Application development |
 | Docker / docker-compose | Cluster deployment |
 | Jupyter Notebook | Data exploration & visualization |
@@ -86,7 +87,7 @@ https://github.com/GoogleCloudPlatform/covid-19-open-data
 ### 1. Prerequisites
 - Docker Desktop installed and running
 - Python 3.10+
-- pip
+- A free **MongoDB Atlas** account → https://www.mongodb.com/cloud/atlas/register
 
 ### 2. Clone the repository
 ```bash
@@ -99,25 +100,90 @@ cd covid-big-data-analytics
 pip install -r requirements.txt
 ```
 
-### 4. Deploy the cluster
+### 4. Set up MongoDB Atlas
+
+> **This is required before running anything.**
+
+#### Step 1 — Create a free Atlas cluster
+1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
+2. Sign up / log in
+3. Click **"Build a Database"** → choose **Free (M0)**
+4. Choose a cloud provider & region → click **"Create"**
+
+#### Step 2 — Create a database user
+1. In Atlas → **Database Access** → **Add New Database User**
+2. Choose **"Password"** authentication
+3. Enter a username and strong password
+4. Under **Built-in Role** select **"Read and write to any database"**
+5. Click **"Add User"**
+
+#### Step 3 — Whitelist your IP
+1. In Atlas → **Network Access** → **Add IP Address**
+2. Click **"Allow Access from Anywhere"** (for development) or add your specific IP
+3. Click **"Confirm"**
+
+#### Step 4 — Get your connection string
+1. In Atlas → your cluster → **"Connect"**
+2. Choose **"Drivers"**
+3. Select **Python** / version **3.6 or later**
+4. Copy the connection string — it looks like:
+   ```
+   mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+   ```
+
+#### Step 5 — Configure your .env
+```bash
+cp .env.example .env
+```
+Open `.env` and set:
+```env
+MONGODB_ATLAS_URI=mongodb+srv://youruser:yourpassword@yourcluster.mongodb.net/covid_analytics?retryWrites=true&w=majority
+MONGODB_DATABASE=covid_analytics
+```
+
+> ⚠️ **Never commit your `.env` file** — it contains your credentials. It is already listed in `.gitignore`.
+
+### 5. Deploy the Hadoop cluster
 ```bash
 bash scripts/deployment/deploy_cluster.sh
 ```
 
-### 5. Run data ingestion
+### 6. Run data ingestion
 ```bash
 bash scripts/ingestion/run_ingestion.sh
 ```
 
-### 6. Submit the Spark analytics job
+### 7. Submit the Spark analytics job
 ```bash
 docker exec hadoop-master spark-submit \
     --master spark://master:7077 \
     /opt/spark/jobs/analytics_job.py
 ```
 
-### 7. Explore results
-Open `notebooks/covid_analysis.ipynb` in Jupyter.
+### 8. View results in MongoDB Atlas
+- Go to your Atlas cluster → **Browse Collections**
+- Database: `covid_analytics`
+- You will see: `country_summary`, `daily_summary`, `vaccination_summary`, `hospitalization_summary`
+
+### 9. Explore results in Jupyter
+```bash
+jupyter notebook notebooks/covid_analysis.ipynb
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Example |
+|---|---|---|
+| `MONGODB_ATLAS_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/...` |
+| `MONGODB_DATABASE` | Database name | `covid_analytics` |
+| `HDFS_NAMENODE_URI` | HDFS NameNode URI | `hdfs://master:9000` |
+| `SPARK_MASTER` | Spark master URL | `spark://master:7077` |
+| `SPARK_EXECUTOR_MEMORY` | Memory per executor | `2g` |
+| `SPARK_EXECUTOR_CORES` | CPU cores per executor | `2` |
+
+See [`.env.example`](.env.example) for all variables.
 
 ---
 
@@ -125,27 +191,38 @@ Open `notebooks/covid_analysis.ipynb` in Jupyter.
 
 ```
 covid-big-data-analytics/
+├── .env.example             ← Copy to .env and fill your Atlas URI
+├── .env                     ← Your secrets (gitignored — never commit!)
+├── docker-compose.yml       ← 3-node Hadoop cluster (no local MongoDB)
+├── requirements.txt
 ├── config/
-│   ├── hadoop/          # core-site.xml, hdfs-site.xml
-│   ├── spark/           # spark-defaults.conf
-│   └── mongodb/         # mongod.conf
+│   ├── hadoop/              ← core-site.xml, hdfs-site.xml
+│   └── spark/               ← spark-defaults.conf
 ├── scripts/
-│   ├── deployment/      # deploy_cluster.sh
-│   ├── hdfs/            # setup_hdfs_dirs.sh
-│   ├── cluster/         # start_cluster.sh, stop_cluster.sh
-│   └── ingestion/       # run_ingestion.sh
+│   ├── deployment/          ← deploy_cluster.sh
+│   ├── hdfs/                ← setup_hdfs_dirs.sh
+│   ├── cluster/             ← start_cluster.sh, stop_cluster.sh
+│   └── ingestion/           ← run_ingestion.sh
 ├── src/
-│   ├── ingestion/       # data_downloader.py, hdfs_uploader.py
-│   ├── processing/      # data_cleaner.py
-│   ├── analytics/       # covid_analyzer.py
-│   └── mongodb/         # mongo_loader.py
+│   ├── ingestion/           ← data_downloader.py, hdfs_uploader.py
+│   ├── processing/          ← data_cleaner.py
+│   ├── analytics/           ← covid_analyzer.py
+│   └── mongodb/             ← mongo_loader.py (Atlas)
 ├── spark/
-│   ├── jobs/            # analytics_job.py
-│   └── utils/           # spark_session.py
-├── notebooks/           # covid_analysis.ipynb
-├── tests/               # pytest test suite
-├── dataset/             # Raw CSV data (gitignored)
-├── output/              # Pipeline output (gitignored)
-├── docker-compose.yml
-└── requirements.txt
+│   ├── jobs/                ← analytics_job.py
+│   └── utils/               ← spark_session.py
+├── notebooks/               ← covid_analysis.ipynb
+├── tests/                   ← pytest test suite
+├── dataset/                 ← Raw CSV data (gitignored)
+└── output/                  ← Pipeline output (gitignored)
 ```
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+> Note: MongoDB tests use mocking — no Atlas connection needed for tests.

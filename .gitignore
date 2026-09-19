@@ -253,10 +253,15 @@ output/processed/
 .DS_Store
 Thumbs.db
 
-# Environment/secrets
+# Environment/secrets — NEVER commit real credentials
 .env
+.env.local
+.env.production
 *.pem
 *.key
+*.p12
+# MongoDB Atlas
+atlas_credentials.json
 
 # Spark
 spark-warehouse/
