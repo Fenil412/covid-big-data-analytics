@@ -1,5 +1,3 @@
-version: "3.8"
-
 # =============================================================================
 # docker-compose.yml — 3-Node Hadoop Cluster
 # Project: COVID-19 Big Data Analytics Platform
