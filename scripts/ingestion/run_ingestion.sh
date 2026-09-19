@@ -5,7 +5,8 @@
 # Author:  Sarth Narola (Member 2 — Cluster & Data Ingestion Engineer)
 #
 # Usage: bash scripts/ingestion/run_ingestion.sh
-# Runs: data_downloader.py → hdfs_uploader.py
+# Runs: MongoDB Atlas check → data_downloader.py → hdfs_uploader.py
+# Updated: Added Atlas connection pre-check before ingestion starts
 # =============================================================================
 
 set -e
@@ -26,6 +27,12 @@ echo "========================================================"
 echo "  COVID-19 Data Ingestion Pipeline"
 echo "========================================================"
 echo ""
+
+# ── Step 0: Verify MongoDB Atlas connection ────────────────────────────────────
+log "Step 0: Verifying MongoDB Atlas connection..."
+python3 "$PROJECT_ROOT/scripts/test_mongo_connection.py" \
+    || error "MongoDB Atlas connection failed. Check your .env file and IP whitelist."
+success "MongoDB Atlas connection verified."
 
 # ── Step 1: Download CSV data ─────────────────────────────────────────────────
 log "Step 1: Downloading Google COVID-19 Open Data..."
