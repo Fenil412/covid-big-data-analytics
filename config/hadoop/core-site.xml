@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  core-site.xml — Hadoop Core Configuration
+  Project: COVID-19 Big Data Analytics Platform
+  Author:  Fenil Chodvadiya (Member 1 — Lead Data Engineer)
+-->
+<configuration>
+
+  <!-- HDFS NameNode address -->
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://master:9000</value>
+    <description>Default filesystem — points to NameNode on master node</description>
+  </property>
+
+  <!-- Hadoop temp directory on each node -->
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>/hadoop/tmp</value>
+    <description>Temporary directory used by Hadoop daemons</description>
+  </property>
+
+  <!-- HTTP static user for Web UI -->
+  <property>
+    <name>hadoop.http.staticuser.user</name>
+    <value>root</value>
+  </property>
+
+  <!-- Proxy user settings for Spark -->
+  <property>
+    <name>hadoop.proxyuser.root.hosts</name>
+    <value>*</value>
+  </property>
+  <property>
+    <name>hadoop.proxyuser.root.groups</name>
+    <value>*</value>
+  </property>
+
+</configuration>
