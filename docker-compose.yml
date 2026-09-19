@@ -1,11 +1,16 @@
 # =============================================================================
-# docker-compose.yml — 3-Node Hadoop Cluster
+# docker-compose.yml - Hadoop + Spark Cluster
 # Project: COVID-19 Big Data Analytics Platform
-# Author:  Fenil Chodvadiya (Member 1 — Lead Data Engineer)
+# Author:  Fenil Chodvadiya (Member 1 - Lead Data Engineer)
 #
-# NOTE: MongoDB is hosted on MongoDB Atlas (cloud).
-#       No local MongoDB container is needed.
-#       Set MONGODB_ATLAS_URI in your .env file before running.
+# Images used:
+#   bde2020/hadoop-namenode   - HDFS NameNode (proven multi-node image)
+#   bde2020/hadoop-datanode   - HDFS DataNode
+#   bde2020/spark-master      - Spark Master
+#   bde2020/spark-worker      - Spark Worker
+#
+# MongoDB is hosted on MongoDB Atlas (cloud) - no local container needed.
+# Set MONGODB_ATLAS_URI in your .env file before running.
 # =============================================================================
 
 networks:
@@ -16,88 +21,149 @@ networks:
         - subnet: 172.20.0.0/16
 
 services:
-  # ─────────────────────────────────────────
-  # Hadoop Master Node (NameNode + YARN ResourceManager + Spark Master)
-  # ─────────────────────────────────────────
-  master:
-    image: apache/hadoop:3.3.6
+
+  # ---------------------------------------------------------------------------
+  # HDFS NameNode (also acts as master)
+  # Web UI: http://localhost:9870
+  # ---------------------------------------------------------------------------
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-master
     hostname: master
+    restart: on-failure
     environment:
-      - HADOOP_HOME=/opt/hadoop
-      - HDFS_NAMENODE_USER=root
-      - HDFS_DATANODE_USER=root
-      - HDFS_SECONDARYNAMENODE_USER=root
-      - YARN_RESOURCEMANAGER_USER=root
-      - YARN_NODEMANAGER_USER=root
-      # Pass Atlas URI from host .env into container
+      - CLUSTER_NAME=covid-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_replication=2
+      - HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check=false
       - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
       - MONGODB_DATABASE=${MONGODB_DATABASE:-covid_analytics}
     ports:
       - "9870:9870"   # HDFS Web UI
-      - "8088:8088"   # YARN Resource Manager
-      - "7077:7077"   # Spark Master
-      - "8080:8080"   # Spark Web UI
-      - "4040:4040"   # Spark Application UI
+      - "9000:9000"   # HDFS RPC
     volumes:
-      - ./config/hadoop:/opt/hadoop/etc/hadoop
-      - ./config/spark:/opt/spark/conf
-      - ./spark/jobs:/opt/spark/jobs
-      - ./spark/utils:/opt/spark/utils
-      - ./src:/opt/spark/src
-      - ./dataset:/data/raw
-      - ./.env:/opt/spark/.env:ro
       - hadoop_namenode:/hadoop/dfs/name
+      - ./dataset:/data/raw
+      - ./.env:/opt/.env:ro
     networks:
       hadoop_net:
         ipv4_address: 172.20.0.10
-    command: ["sh", "-c", "/opt/hadoop/sbin/start-dfs.sh && /opt/hadoop/sbin/start-yarn.sh && tail -f /dev/null"]
 
-  # ─────────────────────────────────────────
-  # Worker Node 1
-  # ─────────────────────────────────────────
-  worker1:
-    image: apache/hadoop:3.3.6
+  # ---------------------------------------------------------------------------
+  # HDFS DataNode 1
+  # ---------------------------------------------------------------------------
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-worker1
     hostname: worker1
+    restart: on-failure
     environment:
-      - HADOOP_HOME=/opt/hadoop
-      - HDFS_DATANODE_USER=root
-      - YARN_NODEMANAGER_USER=root
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_replication=2
       - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
     depends_on:
-      - master
+      - namenode
     volumes:
-      - ./config/hadoop:/opt/hadoop/etc/hadoop
-      - ./.env:/opt/spark/.env:ro
       - hadoop_datanode1:/hadoop/dfs/data
     networks:
       hadoop_net:
         ipv4_address: 172.20.0.11
-    command: ["sh", "-c", "hdfs datanode & yarn nodemanager & tail -f /dev/null"]
 
-  # ─────────────────────────────────────────
-  # Worker Node 2
-  # ─────────────────────────────────────────
-  worker2:
-    image: apache/hadoop:3.3.6
+  # ---------------------------------------------------------------------------
+  # HDFS DataNode 2
+  # ---------------------------------------------------------------------------
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-worker2
     hostname: worker2
+    restart: on-failure
     environment:
-      - HADOOP_HOME=/opt/hadoop
-      - HDFS_DATANODE_USER=root
-      - YARN_NODEMANAGER_USER=root
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_replication=2
       - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
     depends_on:
-      - master
+      - namenode
     volumes:
-      - ./config/hadoop:/opt/hadoop/etc/hadoop
-      - ./.env:/opt/spark/.env:ro
       - hadoop_datanode2:/hadoop/dfs/data
     networks:
       hadoop_net:
         ipv4_address: 172.20.0.12
-    command: ["sh", "-c", "hdfs datanode & yarn nodemanager & tail -f /dev/null"]
+
+  # ---------------------------------------------------------------------------
+  # Spark Master
+  # Web UI: http://localhost:8080
+  # ---------------------------------------------------------------------------
+  spark-master:
+    image: bde2020/spark-master:3.3.0-hadoop3.3
+    container_name: spark-master
+    hostname: spark-master
+    restart: on-failure
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-covid_analytics}
+    ports:
+      - "8080:8080"   # Spark Web UI
+      - "7077:7077"   # Spark Master port
+      - "4040:4040"   # Spark App UI
+    volumes:
+      - ./spark/jobs:/opt/spark-apps
+      - ./spark/utils:/opt/spark-utils
+      - ./src:/opt/spark-src
+      - ./.env:/opt/.env:ro
+    depends_on:
+      - namenode
+    networks:
+      hadoop_net:
+        ipv4_address: 172.20.0.20
+
+  # ---------------------------------------------------------------------------
+  # Spark Worker 1
+  # ---------------------------------------------------------------------------
+  spark-worker1:
+    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    container_name: spark-worker1
+    hostname: spark-worker1
+    restart: on-failure
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    networks:
+      hadoop_net:
+        ipv4_address: 172.20.0.21
+
+  # ---------------------------------------------------------------------------
+  # Spark Worker 2
+  # ---------------------------------------------------------------------------
+  spark-worker2:
+    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    container_name: spark-worker2
+    hostname: spark-worker2
+    restart: on-failure
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - CORE_CONF_fs_defaultFS=hdfs://master:9000
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
+    depends_on:
+      - spark-master
+    ports:
+      - "8082:8081"
+    networks:
+      hadoop_net:
+        ipv4_address: 172.20.0.22
 
 volumes:
   hadoop_namenode:
