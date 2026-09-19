@@ -1,5 +1,15 @@
 version: "3.8"
 
+# =============================================================================
+# docker-compose.yml — 3-Node Hadoop Cluster
+# Project: COVID-19 Big Data Analytics Platform
+# Author:  Fenil Chodvadiya (Member 1 — Lead Data Engineer)
+#
+# NOTE: MongoDB is hosted on MongoDB Atlas (cloud).
+#       No local MongoDB container is needed.
+#       Set MONGODB_ATLAS_URI in your .env file before running.
+# =============================================================================
+
 networks:
   hadoop_net:
     driver: bridge
@@ -9,7 +19,7 @@ networks:
 
 services:
   # ─────────────────────────────────────────
-  # Hadoop Master Node
+  # Hadoop Master Node (NameNode + YARN ResourceManager + Spark Master)
   # ─────────────────────────────────────────
   master:
     image: apache/hadoop:3.3.6
@@ -22,6 +32,9 @@ services:
       - HDFS_SECONDARYNAMENODE_USER=root
       - YARN_RESOURCEMANAGER_USER=root
       - YARN_NODEMANAGER_USER=root
+      # Pass Atlas URI from host .env into container
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-covid_analytics}
     ports:
       - "9870:9870"   # HDFS Web UI
       - "8088:8088"   # YARN Resource Manager
@@ -30,9 +43,12 @@ services:
       - "4040:4040"   # Spark Application UI
     volumes:
       - ./config/hadoop:/opt/hadoop/etc/hadoop
+      - ./config/spark:/opt/spark/conf
       - ./spark/jobs:/opt/spark/jobs
       - ./spark/utils:/opt/spark/utils
+      - ./src:/opt/spark/src
       - ./dataset:/data/raw
+      - ./.env:/opt/spark/.env:ro
       - hadoop_namenode:/hadoop/dfs/name
     networks:
       hadoop_net:
@@ -50,10 +66,12 @@ services:
       - HADOOP_HOME=/opt/hadoop
       - HDFS_DATANODE_USER=root
       - YARN_NODEMANAGER_USER=root
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
     depends_on:
       - master
     volumes:
       - ./config/hadoop:/opt/hadoop/etc/hadoop
+      - ./.env:/opt/spark/.env:ro
       - hadoop_datanode1:/hadoop/dfs/data
     networks:
       hadoop_net:
@@ -71,36 +89,19 @@ services:
       - HADOOP_HOME=/opt/hadoop
       - HDFS_DATANODE_USER=root
       - YARN_NODEMANAGER_USER=root
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
     depends_on:
       - master
     volumes:
       - ./config/hadoop:/opt/hadoop/etc/hadoop
+      - ./.env:/opt/spark/.env:ro
       - hadoop_datanode2:/hadoop/dfs/data
     networks:
       hadoop_net:
         ipv4_address: 172.20.0.12
     command: ["sh", "-c", "hdfs datanode & yarn nodemanager & tail -f /dev/null"]
 
-  # ─────────────────────────────────────────
-  # MongoDB
-  # ─────────────────────────────────────────
-  mongodb:
-    image: mongo:6.0
-    container_name: covid-mongodb
-    hostname: mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=covid_analytics
-    volumes:
-      - ./config/mongodb/mongod.conf:/etc/mongod.conf
-      - mongo_data:/data/db
-    networks:
-      hadoop_net:
-        ipv4_address: 172.20.0.20
-
 volumes:
   hadoop_namenode:
   hadoop_datanode1:
   hadoop_datanode2:
-  mongo_data:

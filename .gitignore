@@ -227,6 +227,9 @@ __pycache__/
 venv/
 .venv/
 env/
+.env/
+# Prevent venv from being accidentally staged
+venv/**
 
 # Jupyter
 .ipynb_checkpoints/
@@ -253,10 +256,15 @@ output/processed/
 .DS_Store
 Thumbs.db
 
-# Environment/secrets
+# Environment/secrets — NEVER commit real credentials
 .env
+.env.local
+.env.production
 *.pem
 *.key
+*.p12
+# MongoDB Atlas
+atlas_credentials.json
 
 # Spark
 spark-warehouse/

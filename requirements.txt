@@ -1,8 +1,11 @@
 pyspark
-pymongo
+pymongo[srv]
+dnspython
+python-dotenv
 pandas
 numpy
 matplotlib
 plotly
 jupyter
 pytest
+responses
