@@ -1,22 +1,16 @@
 # Distributed COVID-19 Big Data Analytics Platform
 
-A distributed Big Data analytics platform for processing historical
-COVID-19 data using a 3-node Hadoop HDFS cluster, Apache Spark, and **MongoDB Atlas**.
+> **Distributed Big Data Analytics** using 3-node Hadoop HDFS, Apache Spark (PySpark), and MongoDB Atlas.
 
 ---
 
-## Project Overview
+## Team
 
-This project processes **Google COVID-19 Open Data** using a distributed
-3-node Hadoop cluster (1 Master + 2 Workers) deployed via Docker.
-Analytics results are stored in **MongoDB Atlas** (cloud-hosted NoSQL).
-
-The pipeline covers:
-1. **Data Ingestion** — Download CSV data and upload to HDFS
-2. **Distributed Processing** — Clean & transform data using PySpark
-3. **Analytics** — Compute country-level and daily COVID statistics
-4. **Storage** — Store results in MongoDB Atlas collections
-5. **Visualization** — Explore results via Jupyter Notebook
+| # | Name | GitHub | Role | Work |
+|---|------|--------|------|------|
+| 1 | **Fenil Chodvadiya** (Leader) | [Fenil412](https://github.com/Fenil412) | Lead Data Engineer / Infrastructure | 50% |
+| 2 | Sarth Narola | [Sarth00718](https://github.com/Sarth00718) | Cluster & Data Ingestion Engineer | 25% |
+| 3 | Aayush Savaliya | [Aayush-235](https://github.com/Aayush-235) | Analytics & NoSQL Engineer | 25% |
 
 ---
 
@@ -24,173 +18,269 @@ The pipeline covers:
 
 ```
 Google COVID-19 Open Data (CSV)
-            ↓
-    Data Ingestion (Python)
-            ↓
-   Hadoop HDFS — /covid/raw
-            ↓
-  3-Node Docker Cluster
-  ┌──────────────────────────────────────┐
-  │  master   → NameNode + Spark Master  │
-  │  worker1  → DataNode + Spark Worker  │
-  │  worker2  → DataNode + Spark Worker  │
-  └──────────────────────────────────────┘
-            ↓
-   Apache Spark (PySpark)
-   ├── data_cleaner.py
-   └── covid_analyzer.py
-            ↓
-     MongoDB Atlas (Cloud)
-   ├── country_summary
-   ├── daily_summary
-   ├── vaccination_summary
-   └── hospitalization_summary
-            ↓
-  Jupyter Notebook / Reports
+            │
+     Step 1: Data Download (Python)
+            │
+     dataset/ (local) ──or── Hadoop HDFS /covid/raw (Docker)
+            │
+   ┌────────────────────────────────────┐
+   │  Apache Spark — PySpark Local[*]  │  ◄── or Spark Cluster (Docker)
+   │  · data_cleaner.py                │
+   │  · covid_analyzer.py              │
+   └────────────────────────────────────┘
+            │
+   MongoDB Atlas (Cloud)
+   ├── country_summary        (232 docs)
+   ├── daily_summary          (990 docs)
+   ├── vaccination_summary    (232 docs)
+   └── hospitalization_summary (15 docs)
+            │
+   Jupyter Notebook (visualizations)
 ```
 
 ---
 
-## Team
+## Tech Stack
 
-| Member | Name | GitHub | Role |
-|---|---|---|---|
-| Member 1 | Fenil Chodvadiya | [Fenil412](https://github.com/Fenil412) | Project Leader / Lead Data Engineer |
-| Member 2 | Sarth Narola | [Sarth00718](https://github.com/Sarth00718) | Cluster & Data Ingestion Engineer |
-| Member 3 | Aayush Savaliya | [Aayush-235](https://github.com/Aayush-235) | Analytics & NoSQL Engineer |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Python | 3.10+ | Application |
+| PySpark | 3.5.3 | Distributed analytics |
+| Java | 8 / 11 | PySpark runtime |
+| MongoDB Atlas | M0 Free | Cloud results storage |
+| Hadoop HDFS | 3.2.1 | Distributed file system (Docker) |
+| Docker / docker-compose | Latest | Cluster deployment |
+| Jupyter Notebook | Latest | Visualization |
 
 ---
 
 ## Dataset
 
-**Google COVID-19 Open Data**
-https://github.com/GoogleCloudPlatform/covid-19-open-data
+**Google COVID-19 Open Data** — https://github.com/GoogleCloudPlatform/covid-19-open-data
+
+| File | Size | Contents |
+|------|------|----------|
+| `epidemiology.csv` | ~497 MB | Daily cases, deaths, recoveries |
+| `vaccinations.csv` | ~157 MB | Vaccination data per country |
+| `hospitalizations.csv` | ~63 MB | Hospital burden per country |
+| `demographics.csv` | ~1.5 MB | Population statistics |
+| `index.csv` | ~2.3 MB | Country name lookup |
 
 ---
 
-## Technologies
+## Prerequisites (Install before starting)
 
-| Technology | Purpose |
-|---|---|
-| Hadoop HDFS 3.3.6 | Distributed storage |
-| Apache Spark / PySpark | Distributed data processing |
-| **MongoDB Atlas** | Cloud-hosted NoSQL results storage |
-| Python 3.10 | Application development |
-| Docker / docker-compose | Cluster deployment |
-| Jupyter Notebook | Data exploration & visualization |
-| GitHub | Version control & collaboration |
+- [ ] **Python 3.10+** → https://www.python.org/downloads/
+- [ ] **Java 8 or Java 11** (NOT 17) → https://adoptium.net/temurin/releases/?version=11
+  - Check: `java -version` → must show `1.8.x` or `11.x`
+- [ ] **Docker Desktop** → https://www.docker.com/products/docker-desktop
+- [ ] **Git** → https://git-scm.com
+- [ ] **MongoDB Atlas free account** → https://www.mongodb.com/cloud/atlas/register
 
 ---
 
-## Quick Start
+## Complete Setup Guide
 
-### 1. Prerequisites
+### ✅ STEP 1 — Clone the repository
 
-- [ ] **Docker Desktop** installed and running → https://www.docker.com/products/docker-desktop
-- [ ] **Java 8 or Java 11** installed (NOT Java 17+ — PySpark 3.5.x needs Java 8/11) → https://adoptium.net/temurin/releases/?version=11
-- [ ] **Python 3.10+** installed → https://www.python.org/downloads/
-- [ ] **Git** installed → https://git-scm.com
-- [ ] **MongoDB Atlas account** (free) → https://www.mongodb.com/cloud/atlas/register
-- [ ] At least **8 GB RAM** free for Docker (Hadoop cluster)
-
-> **Java Note**: PySpark 3.5.x (in requirements.txt) works with **Java 8 or 11**.
-> PySpark 4.x requires Java 17. Check your version: `java -version`
-
-### 2. Clone the repository
-```bash
+```powershell
 git clone https://github.com/Fenil412/covid-big-data-analytics.git
 cd covid-big-data-analytics
 ```
 
-### 3. Install Python dependencies
-```bash
+---
+
+### ✅ STEP 2 — Create Python virtual environment
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Set up MongoDB Atlas
+> You will see `(venv)` in your prompt after activation.
+> **Note**: PySpark 3.5.3 is pinned in requirements.txt for Java 8/11 compatibility.
 
-> **This is required before running anything.**
+---
 
-#### Step 1 — Create a free Atlas cluster
-1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
-2. Sign up / log in
-3. Click **"Build a Database"** → choose **Free (M0)**
-4. Choose a cloud provider & region → click **"Create"**
+### ✅ STEP 3 — Configure MongoDB Atlas
 
-#### Step 2 — Create a database user
-1. In Atlas → **Database Access** → **Add New Database User**
-2. Choose **"Password"** authentication
-3. Enter a username and strong password
-4. Under **Built-in Role** select **"Read and write to any database"**
-5. Click **"Add User"**
+#### 3a. Atlas is already set up with these collections:
+| Collection | Documents |
+|---|---|
+| `country_summary` | 232 |
+| `daily_summary` | 990 |
+| `vaccination_summary` | 232 |
+| `hospitalization_summary` | 15 |
 
-#### Step 3 — Whitelist your IP
-1. In Atlas → **Network Access** → **Add IP Address**
-2. Click **"Allow Access from Anywhere"** (for development) or add your specific IP
-3. Click **"Confirm"**
-
-#### Step 4 — Get your connection string
-1. In Atlas → your cluster → **"Connect"**
-2. Choose **"Drivers"**
-3. Select **Python** / version **3.6 or later**
-4. Copy the connection string — it looks like:
-   ```
-   mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
-   ```
-
-#### Step 5 — Configure your .env
-```bash
-cp .env.example .env
+#### 3b. Copy `.env.example` to `.env` and fill in your Atlas URI:
+```powershell
+copy .env.example .env
 ```
-Open `.env` and set:
+Edit `.env`:
 ```env
-MONGODB_ATLAS_URI=mongodb+srv://youruser:yourpassword@yourcluster.mongodb.net/covid_analytics?retryWrites=true&w=majority
+MONGODB_ATLAS_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/covid_analytics?retryWrites=true&w=majority
 MONGODB_DATABASE=covid_analytics
 ```
 
-> ⚠️ **Never commit your `.env` file** — it contains your credentials. It is already listed in `.gitignore`.
+#### 3c. Test the connection:
+```powershell
+python scripts/test_mongo_connection.py
+```
+✅ Expected: `[ALL CHECKS PASSED] MongoDB Atlas is ready!`
 
-### 5. Deploy the Hadoop cluster
-```bash
-bash scripts/deployment/deploy_cluster.sh
+---
+
+### ✅ STEP 4 — Run the full pipeline (Local Mode — No Docker needed)
+
+```powershell
+python run_pipeline_local.py
 ```
 
-### 6. Run data ingestion
-```bash
-bash scripts/ingestion/run_ingestion.sh
+**What this does automatically:**
+1. Downloads 5 COVID-19 CSV files (~720 MB) to `dataset/`
+2. Starts PySpark in `local[*]` mode
+3. Filters 12.5M rows → 227K country-level rows
+4. Runs 4 analytics jobs (country, daily, vaccination, hospitalization)
+5. Saves Parquet output to `output/`
+6. Loads **1,469 documents** into MongoDB Atlas
+
+**Expected output:**
 ```
-
-### 7. Submit the Spark analytics job
-```bash
-docker exec hadoop-master spark-submit \
-    --master spark://master:7077 \
-    /opt/spark/jobs/analytics_job.py
-```
-
-### 8. View results in MongoDB Atlas
-- Go to your Atlas cluster → **Browse Collections**
-- Database: `covid_analytics`
-- You will see: `country_summary`, `daily_summary`, `vaccination_summary`, `hospitalization_summary`
-
-### 9. Explore results in Jupyter
-```bash
-jupyter notebook notebooks/covid_analysis.ipynb
+[OK] SparkSession ready | Spark 3.5.3
+[OK] Country-level rows: 227,879 (233 countries)
+[OK] country_summary: 232 countries
+[OK] daily_summary: 990 days
+[OK] vaccination_summary: 232 countries
+[OK] hospitalization_summary: 15 countries
+[OK] Total documents in Atlas: 1,469
+PIPELINE COMPLETE — Total time: ~60s
 ```
 
 ---
 
-## Environment Variables
+### ✅ STEP 5 — View results in MongoDB Atlas
 
-| Variable | Description | Example |
+Go to → **https://cloud.mongodb.com**
+→ Cluster0 → Browse Collections → **covid_analytics**
+
+| Collection | Documents | Contents |
 |---|---|---|
-| `MONGODB_ATLAS_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/...` |
-| `MONGODB_DATABASE` | Database name | `covid_analytics` |
-| `HDFS_NAMENODE_URI` | HDFS NameNode URI | `hdfs://master:9000` |
-| `SPARK_MASTER` | Spark master URL | `spark://master:7077` |
-| `SPARK_EXECUTOR_MEMORY` | Memory per executor | `2g` |
-| `SPARK_EXECUTOR_CORES` | CPU cores per executor | `2` |
+| `country_summary` | 232 | Total cases, deaths, CFR per country |
+| `daily_summary` | 990 | Global daily trend + 7-day rolling avg |
+| `vaccination_summary` | 232 | Vaccination progress per country |
+| `hospitalization_summary` | 15 | Hospital burden per country |
 
-See [`.env.example`](.env.example) for all variables.
+---
+
+### ✅ STEP 6 — Open Jupyter Notebook (visualizations)
+
+```powershell
+venv\Scripts\activate
+jupyter notebook notebooks/covid_analysis.ipynb
+```
+Opens in browser at http://localhost:8888
+
+---
+
+## STEP 7 — Docker Cluster (Hadoop + Spark) — Optional
+
+> **This step is only needed if you want to run on the full Hadoop HDFS cluster.**
+> The pipeline runs perfectly in local mode (Step 4) without Docker.
+
+### 7a. Pull Docker images first (one by one — large files)
+```powershell
+docker pull bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+docker pull bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+docker pull bde2020/spark-master:3.3.0-hadoop3.3
+docker pull bde2020/spark-worker:3.3.0-hadoop3.3
+```
+> If Docker Hub is slow or gives TLS error, try again — it resumes from where it stopped.
+> You can also pull via Docker Desktop: Images → Search → paste image name → Pull
+
+### 7b. Start the cluster (after all images are downloaded)
+```powershell
+docker-compose up -d
+```
+
+**Verify all 5 containers are running:**
+```powershell
+docker ps
+```
+Expected:
+```
+NAMES            STATUS
+hadoop-master    Up
+hadoop-worker1   Up
+hadoop-worker2   Up
+spark-master     Up
+spark-worker1    Up
+spark-worker2    Up
+```
+
+### 7c. Setup HDFS directories (wait 30s after cluster starts)
+```powershell
+docker exec hadoop-master hdfs dfs -mkdir -p /covid/raw /covid/processed /covid/output /spark-logs
+docker exec hadoop-master hdfs dfs -chmod -R 777 /covid
+docker exec hadoop-master hdfs dfs -ls /
+```
+
+### 7d. Upload data to HDFS
+```powershell
+# First download data locally (if not done yet)
+python src/ingestion/data_downloader.py
+
+# Then upload to HDFS
+python src/ingestion/hdfs_uploader.py
+```
+
+### 7e. Run Spark job on cluster
+```powershell
+docker cp src/ spark-master:/opt/spark-apps/src
+docker cp spark/ spark-master:/opt/spark-apps/spark
+docker cp .env spark-master:/opt/.env
+
+docker exec spark-master spark-submit `
+  --master spark://spark-master:7077 `
+  --executor-memory 1g `
+  /opt/spark-apps/spark/jobs/analytics_job.py
+```
+
+### 7f. Cluster Web UIs
+| Service | URL |
+|---|---|
+| HDFS NameNode | http://localhost:9870 |
+| Spark Master | http://localhost:8080 |
+| Spark Worker 1 | http://localhost:8081 |
+| Spark Worker 2 | http://localhost:8082 |
+
+### 7g. Stop the cluster
+```powershell
+docker-compose down
+```
+
+---
+
+## Quick Reference — All Commands
+
+```powershell
+# Activate venv (always do this first)
+venv\Scripts\activate
+
+# Test MongoDB Atlas
+python scripts/test_mongo_connection.py
+
+# Run full pipeline (local mode)
+python run_pipeline_local.py
+
+# Open Jupyter
+jupyter notebook notebooks/covid_analysis.ipynb
+
+# Docker cluster
+docker-compose up -d       # start
+docker ps                  # check status
+docker-compose down        # stop
+```
 
 ---
 
@@ -198,38 +288,57 @@ See [`.env.example`](.env.example) for all variables.
 
 ```
 covid-big-data-analytics/
-├── .env.example             ← Copy to .env and fill your Atlas URI
-├── .env                     ← Your secrets (gitignored — never commit!)
-├── docker-compose.yml       ← 3-node Hadoop cluster (no local MongoDB)
-├── requirements.txt
+│
+├── .env.example              ← Copy to .env, fill in Atlas URI
+├── .env                      ← Your secrets (NEVER commit)
+├── docker-compose.yml        ← 3-node Hadoop + Spark cluster
+├── requirements.txt          ← Python deps (pyspark==3.5.3)
+├── run_pipeline_local.py     ← ONE-COMMAND local pipeline runner
+│
 ├── config/
-│   ├── hadoop/              ← core-site.xml, hdfs-site.xml
-│   └── spark/               ← spark-defaults.conf
+│   ├── hadoop/               ← Hadoop core/hdfs config
+│   └── spark/                ← Spark defaults
+│
 ├── scripts/
-│   ├── deployment/          ← deploy_cluster.sh
-│   ├── hdfs/                ← setup_hdfs_dirs.sh
-│   ├── cluster/             ← start_cluster.sh, stop_cluster.sh
-│   └── ingestion/           ← run_ingestion.sh
+│   ├── test_mongo_connection.py  ← Test Atlas connection
+│   ├── cluster/                  ← start/stop scripts
+│   ├── hdfs/                     ← HDFS setup scripts
+│   └── ingestion/                ← run_ingestion.sh
+│
 ├── src/
-│   ├── ingestion/           ← data_downloader.py, hdfs_uploader.py
-│   ├── processing/          ← data_cleaner.py
-│   ├── analytics/           ← covid_analyzer.py
-│   └── mongodb/             ← mongo_loader.py (Atlas)
+│   ├── ingestion/
+│   │   ├── data_downloader.py    ← Download Google COVID CSVs
+│   │   └── hdfs_uploader.py      ← Upload to HDFS
+│   ├── processing/
+│   │   └── data_cleaner.py       ← PySpark cleaning
+│   ├── analytics/
+│   │   └── covid_analyzer.py     ← PySpark analytics
+│   └── mongodb/
+│       └── mongo_loader.py       ← Load results to Atlas
+│
 ├── spark/
-│   ├── jobs/                ← analytics_job.py
-│   └── utils/               ← spark_session.py
-├── notebooks/               ← covid_analysis.ipynb
-├── tests/                   ← pytest test suite
-├── dataset/                 ← Raw CSV data (gitignored)
-└── output/                  ← Pipeline output (gitignored)
+│   ├── jobs/
+│   │   └── analytics_job.py      ← Spark job entry point
+│   └── utils/
+│       └── spark_session.py      ← SparkSession factory
+│
+├── notebooks/
+│   └── covid_analysis.ipynb      ← Jupyter visualizations
+│
+├── tests/                        ← Unit tests
+├── dataset/                      ← Downloaded CSVs (gitignored)
+└── output/                       ← Parquet output (gitignored)
 ```
 
 ---
 
-## Running Tests
+## Troubleshooting
 
-```bash
-pytest tests/ -v
-```
-
-> Note: MongoDB tests use mocking — no Atlas connection needed for tests.
+| Problem | Solution |
+|---------|----------|
+| `UnsupportedClassVersionError` (Java) | You have wrong Java version. Install Java 11: https://adoptium.net |
+| `SparkOutOfMemoryError` | Close other apps, run `python run_pipeline_local.py` again |
+| `MONGODB_ATLAS_URI not set` | Check your `.env` file has the URI filled in |
+| Atlas connection timeout | Go to Atlas → Network Access → Add IP → Allow Anywhere (`0.0.0.0/0`) |
+| Docker TLS timeout | Pull images one by one: `docker pull bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8` |
+| `docker: not running` | Open Docker Desktop app first, wait for green status icon |
