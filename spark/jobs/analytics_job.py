@@ -16,14 +16,19 @@ Submit command (from inside master container):
 """
 
 import sys
+import os
 import logging
 import argparse
+from pathlib import Path
 from datetime import datetime
 
-# Add project root to path
-sys.path.insert(0, "/opt/spark")
+# Support both local dev and Docker container execution
+PROJECT_ROOT = Path(__file__).resolve().parents[1]  # spark/jobs -> project root
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, "/opt/spark")       # Docker container path
+sys.path.insert(0, "/opt/spark-apps")  # bde2020 container path
 
-from utils.spark_session import get_spark_session, stop_spark_session
+from spark.utils.spark_session import get_spark_session, stop_spark_session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,12 +40,14 @@ logger = logging.getLogger("analytics_job")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="COVID-19 Big Data Analytics Job")
-    parser.add_argument("--mode", default="cluster", choices=["cluster", "local"],
-                        help="Spark run mode: 'cluster' or 'local' (default: cluster)")
-    parser.add_argument("--input-path", default="hdfs://master:9000/covid/raw",
-                        help="HDFS path to raw CSV data")
-    parser.add_argument("--output-path", default="hdfs://master:9000/covid/output",
-                        help="HDFS path to write processed output")
+    parser.add_argument("--mode", default="local", choices=["cluster", "local"],
+                        help="Spark run mode: 'local' (default) or 'cluster'")
+    parser.add_argument("--input-path",
+                        default=str(PROJECT_ROOT / "dataset"),
+                        help="Path to raw CSV data (local path or hdfs://...)")
+    parser.add_argument("--output-path",
+                        default=str(PROJECT_ROOT / "output"),
+                        help="Path to write processed output")
     parser.add_argument("--skip-mongo", action="store_true",
                         help="Skip MongoDB loading step (useful for testing)")
     return parser.parse_args()
