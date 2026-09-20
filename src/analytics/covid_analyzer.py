@@ -119,15 +119,23 @@ class CovidAnalyzer:
     def hospitalization_summary(self, df: DataFrame) -> DataFrame:
         """
         Hospital burden per country: average and peak hospitalized patients.
+        Returns empty DataFrame if hospitalization columns not present.
         """
         logger.info("Computing hospitalization_summary...")
+        hosp_col = "new_hospitalized_patients"
+
+        # Guard: return empty DF if column doesn't exist
+        if hosp_col not in df.columns:
+            logger.warning(f"  Column '{hosp_col}' not found - skipping hospitalization_summary.")
+            return self.spark.createDataFrame([], schema="country_name STRING, location_key STRING")
+
         result = (
-            df.filter(F.col("new_hospitalized_patients") > 0)
+            df.filter(F.col(hosp_col) > 0)
             .groupBy("country_name", "location_key")
             .agg(
-                F.sum("new_hospitalized_patients").alias("total_hospitalized"),
-                F.max("new_hospitalized_patients").alias("peak_hospitalized"),
-                F.round(F.avg("new_hospitalized_patients"), 2).alias("avg_daily_hospitalized"),
+                F.sum(hosp_col).alias("total_hospitalized"),
+                F.max(hosp_col).alias("peak_hospitalized"),
+                F.round(F.avg(hosp_col), 2).alias("avg_daily_hospitalized"),
             )
             .orderBy(F.col("total_hospitalized").desc())
         )
