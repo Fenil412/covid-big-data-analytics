@@ -85,9 +85,16 @@ https://github.com/GoogleCloudPlatform/covid-19-open-data
 ## Quick Start
 
 ### 1. Prerequisites
-- Docker Desktop installed and running
-- Python 3.10+
-- A free **MongoDB Atlas** account → https://www.mongodb.com/cloud/atlas/register
+
+- [ ] **Docker Desktop** installed and running → https://www.docker.com/products/docker-desktop
+- [ ] **Java 8 or Java 11** installed (NOT Java 17+ — PySpark 3.5.x needs Java 8/11) → https://adoptium.net/temurin/releases/?version=11
+- [ ] **Python 3.10+** installed → https://www.python.org/downloads/
+- [ ] **Git** installed → https://git-scm.com
+- [ ] **MongoDB Atlas account** (free) → https://www.mongodb.com/cloud/atlas/register
+- [ ] At least **8 GB RAM** free for Docker (Hadoop cluster)
+
+> **Java Note**: PySpark 3.5.x (in requirements.txt) works with **Java 8 or 11**.
+> PySpark 4.x requires Java 17. Check your version: `java -version`
 
 ### 2. Clone the repository
 ```bash
