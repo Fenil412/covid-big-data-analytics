@@ -1,11 +1,28 @@
-pyspark
-pymongo[srv]
-dnspython
-python-dotenv
-pandas
-numpy
-matplotlib
-plotly
-jupyter
-pytest
-responses
+# COVID-19 Big Data Analytics Platform
+# Python dependencies
+# Compatible with Java 8+ (PySpark 3.5.x)
+
+# --- Big Data ---
+pyspark==3.5.3      # Java 8 compatible (PySpark 4.x requires Java 17)
+
+# --- MongoDB Atlas ---
+pymongo[srv]>=4.6
+dnspython>=2.4
+
+# --- Environment ---
+python-dotenv>=1.0
+
+# --- Data Processing ---
+pandas>=2.0
+numpy>=1.24
+
+# --- Visualization ---
+matplotlib>=3.7
+plotly>=5.18
+
+# --- Notebooks ---
+jupyter>=1.0
+
+# --- Testing ---
+pytest>=7.4
+responses>=0.25
