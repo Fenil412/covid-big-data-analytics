@@ -56,13 +56,13 @@ def parse_args():
 def run_pipeline(spark, args):
     """
     Orchestrate the full analytics pipeline.
-    Each module (cleaning, analytics, mongo) is imported here to
-    keep them independently testable.
+    Reads individual CSVs from input_path, joins country names,
+    filters to country-level, runs analytics, and stores results.
     """
-    from src.processing.data_cleaner import DataCleaner
     from src.analytics.covid_analyzer import CovidAnalyzer
     if not args.skip_mongo:
         from src.mongodb.mongo_loader import MongoLoader
+    from pyspark.sql import functions as F
 
     start_time = datetime.now()
     logger.info("=" * 60)
@@ -71,17 +71,88 @@ def run_pipeline(spark, args):
     logger.info(f"  Output : {args.output_path}")
     logger.info("=" * 60)
 
-    # ── Stage 1: Load raw data ────────────────────────────────────────────────
-    logger.info("[Stage 1] Loading raw data from HDFS...")
-    raw_df = spark.read.option("header", True).option("inferSchema", True).csv(args.input_path)
-    raw_count = raw_df.count()
-    logger.info(f"  Loaded {raw_count:,} records.")
+    input_path = args.input_path.rstrip("/")
 
-    # ── Stage 2: Data Cleaning ────────────────────────────────────────────────
-    logger.info("[Stage 2] Cleaning and transforming data...")
-    cleaner = DataCleaner(spark)
-    clean_df = cleaner.clean(raw_df)
-    logger.info(f"  Records after cleaning: {clean_df.count():,}")
+    # ── Stage 1: Load raw data from individual CSVs ───────────────────────────
+    logger.info("[Stage 1] Loading raw data...")
+
+    # Read index.csv for country names
+    logger.info("  Reading index.csv...")
+    idx_df = (
+        spark.read.option("header", True).option("inferSchema", True)
+        .csv(f"{input_path}/index.csv")
+        .select("location_key", "country_name")
+        .dropDuplicates(["location_key"])
+    )
+
+    # Read epidemiology.csv (primary dataset)
+    logger.info("  Reading epidemiology.csv...")
+    epi_df = (
+        spark.read.option("header", True).option("inferSchema", True)
+        .csv(f"{input_path}/epidemiology.csv")
+    )
+    logger.info(f"  Raw rows (all regions): {epi_df.count():,}")
+
+    # Filter to country-level only (location_key = 2 chars like "US", "IN")
+    epi_df = epi_df.filter(F.length(F.col("location_key")) == 2)
+    logger.info(f"  Country-level rows: {epi_df.count():,}")
+
+    # Join country names
+    epi_df = epi_df.join(F.broadcast(idx_df), on="location_key", how="left")
+
+    # Cast numeric columns
+    for col in ["new_confirmed", "new_deceased", "new_recovered",
+                "cumulative_confirmed", "cumulative_deceased"]:
+        if col in epi_df.columns:
+            epi_df = epi_df.withColumn(col, F.col(col).cast("double"))
+
+    # Drop rows without case data
+    epi_df = epi_df.filter(
+        F.col("new_confirmed").isNotNull() |
+        F.col("cumulative_confirmed").isNotNull()
+    )
+
+    # ── Join vaccinations ──────────────────────────────────────────────────────
+    logger.info("  Reading vaccinations.csv...")
+    vacc_df = (
+        spark.read.option("header", True).option("inferSchema", True)
+        .csv(f"{input_path}/vaccinations.csv")
+        .filter(F.length(F.col("location_key")) == 2)
+    )
+    vacc_cols = ["new_persons_vaccinated", "cumulative_persons_vaccinated"]
+    for col in vacc_cols:
+        if col in vacc_df.columns:
+            vacc_df = vacc_df.withColumn(col, F.col(col).cast("double"))
+    avail_vacc = [c for c in vacc_cols if c in vacc_df.columns]
+    if avail_vacc:
+        clean_df = epi_df.join(
+            vacc_df.select("date", "location_key", *avail_vacc),
+            on=["date", "location_key"], how="left"
+        )
+    else:
+        clean_df = epi_df
+
+    # ── Join hospitalizations ──────────────────────────────────────────────────
+    logger.info("  Reading hospitalizations.csv...")
+    hosp_df = (
+        spark.read.option("header", True).option("inferSchema", True)
+        .csv(f"{input_path}/hospitalizations.csv")
+        .filter(F.length(F.col("location_key")) == 2)
+    )
+    hosp_cols = ["new_hospitalized_patients", "current_hospitalized_patients"]
+    for col in hosp_cols:
+        if col in hosp_df.columns:
+            hosp_df = hosp_df.withColumn(col, F.col(col).cast("double"))
+    avail_hosp = [c for c in hosp_cols if c in hosp_df.columns]
+    if avail_hosp:
+        clean_df = clean_df.join(
+            hosp_df.select("date", "location_key", *avail_hosp),
+            on=["date", "location_key"], how="left"
+        )
+
+    clean_df.cache()
+    clean_count = clean_df.count()
+    logger.info(f"  [OK] Final clean rows: {clean_count:,}")
 
     # ── Stage 3: Analytics ────────────────────────────────────────────────────
     logger.info("[Stage 3] Running distributed analytics...")
