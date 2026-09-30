@@ -16,9 +16,10 @@ python-dotenv>=1.0
 pandas>=2.0
 numpy>=1.24
 
-# --- Visualization ---
+# --- Visualization & Dashboard ---
 matplotlib>=3.7
 plotly>=5.18
+streamlit>=1.30
 
 # --- Notebooks ---
 jupyter>=1.0
