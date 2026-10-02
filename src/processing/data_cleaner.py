@@ -10,7 +10,7 @@ loaded from HDFS before it is passed to the analytics module.
 import logging
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import IntegerType, DoubleType, DateType
+from pyspark.sql.types import DoubleType
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,8 @@ NUMERIC_COLUMNS = [
     "cumulative_deceased",
     "new_persons_vaccinated",
     "cumulative_persons_vaccinated",
+    "new_vaccine_doses_administered",
+    "cumulative_vaccine_doses_administered",
     "new_hospitalized_patients",
     "cumulative_hospitalized_patients",
 ]
@@ -36,7 +38,7 @@ class DataCleaner:
 
     Steps performed:
     1. Drop rows with null date or location_key
-    2. Cast numeric columns to IntegerType
+    2. Cast numeric columns to DoubleType (doses and totals exceed int32)
     3. Replace negative values with 0 (data entry errors)
     4. Parse date column to DateType
     5. Drop full duplicates
@@ -57,16 +59,14 @@ class DataCleaner:
             Cleaned DataFrame ready for analytics.
         """
         logger.info("Starting data cleaning pipeline...")
-        original_count = df.count()
 
         # ── 1. Drop rows without a date or location ───────────────────────────
         df = df.dropna(subset=["date", "location_key"])
-        logger.info(f"After dropping null date/location: {df.count():,} rows")
 
         # ── 2. Cast numeric columns ───────────────────────────────────────────
         for col in NUMERIC_COLUMNS:
             if col in df.columns:
-                df = df.withColumn(col, F.col(col).cast(IntegerType()))
+                df = df.withColumn(col, F.col(col).cast(DoubleType()))
 
         # ── 3. Replace negatives with 0 ───────────────────────────────────────
         for col in NUMERIC_COLUMNS:
@@ -86,7 +86,5 @@ class DataCleaner:
         fill_map = {col: 0 for col in NUMERIC_COLUMNS if col in df.columns}
         df = df.fillna(fill_map)
 
-        clean_count = df.count()
-        dropped = original_count - clean_count
-        logger.info(f"Cleaning complete. Rows: {original_count:,} → {clean_count:,} (dropped {dropped:,})")
+        logger.info("Cleaning transformations prepared.")
         return df

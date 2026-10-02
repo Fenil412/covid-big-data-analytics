@@ -31,6 +31,15 @@ from pyspark.sql import DataFrame
 # Load .env file
 load_dotenv()
 
+# Configure public DNS resolver for reliable MongoDB Atlas SRV resolution
+try:
+    import dns.resolver
+    resolver = dns.resolver.Resolver()
+    resolver.nameservers = ["8.8.8.8", "1.1.1.1", "8.8.4.4"]
+    dns.resolver.default_resolver = resolver
+except Exception:
+    pass
+
 logger = logging.getLogger(__name__)
 
 # ── Connection settings (loaded from .env) ─────────────────────────────────────
@@ -47,6 +56,7 @@ if not MONGO_ATLAS_URI:
 
 # ── Index definitions per collection ──────────────────────────────────────────
 COLLECTION_INDEXES = {
+    "global_metrics":          [("total_cases", ASCENDING)],
     "country_summary":         [("country_name", ASCENDING), ("total_confirmed", ASCENDING)],
     "daily_summary":           [("date", ASCENDING)],
     "vaccination_summary":     [("country_name", ASCENDING), ("total_vaccinated", ASCENDING)],

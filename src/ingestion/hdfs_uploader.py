@@ -4,9 +4,11 @@ Project: COVID-19 Big Data Analytics Platform
 Author:  Sarth Narola (Member 2 — Cluster & Data Ingestion Engineer)
 
 Uploads locally downloaded COVID-19 CSV files from dataset/ directory
-to the Hadoop HDFS /covid/raw path using the hdfs CLI via subprocess.
+to HDFS (default /covid/input) via docker exec + hdfs dfs -put.
+Data is stored as replicated blocks on DataNodes — not a shared bind mount.
 """
 
+import os
 import subprocess
 import logging
 from pathlib import Path
@@ -18,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-HDFS_RAW_PATH = "/covid/raw"
+HDFS_RAW_PATH = os.getenv("HDFS_INPUT_PATH", "/covid/input")
 HADOOP_CONTAINER = "hadoop-master"
 DEFAULT_DATASET_DIR = Path(__file__).resolve().parents[2] / "dataset"
 
