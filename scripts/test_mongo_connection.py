@@ -35,6 +35,15 @@ except ImportError:
     print("⚠  pymongo not installed. Run: pip install 'pymongo[srv]'")
     sys.exit(1)
 
+# Configure public DNS resolver for reliable MongoDB Atlas SRV resolution
+try:
+    import dns.resolver
+    resolver = dns.resolver.Resolver()
+    resolver.nameservers = ["8.8.8.8", "1.1.1.1", "8.8.4.4"]
+    dns.resolver.default_resolver = resolver
+except Exception:
+    pass
+
 
 # ── ANSI colors ────────────────────────────────────────────────────────────────
 GREEN  = "\033[92m"

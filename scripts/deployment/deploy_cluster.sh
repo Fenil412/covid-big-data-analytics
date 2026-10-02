@@ -33,22 +33,28 @@ echo "" | tee -a "$LOG_FILE"
 # ── Step 1: Pre-flight checks ────────────────────────────────────────────────
 log "Step 1: Pre-flight checks..."
 command -v docker &>/dev/null || error "Docker is not installed. Please install Docker first."
-command -v docker-compose &>/dev/null || error "docker-compose not found. Please install it."
-success "Docker and docker-compose are available."
+if command -v docker-compose &>/dev/null; then
+  COMPOSE="docker-compose"
+elif docker compose version &>/dev/null; then
+  COMPOSE="docker compose"
+else
+  error "docker compose not found. Please install Docker Compose."
+fi
+success "Docker and compose are available ($COMPOSE)."
 
 # ── Step 2: Stop any running containers ──────────────────────────────────────
 log "Step 2: Stopping existing containers (if any)..."
 cd "$PROJECT_ROOT"
-docker-compose down --remove-orphans 2>/dev/null && success "Existing containers stopped." || warn "No containers were running."
+$COMPOSE down --remove-orphans 2>/dev/null && success "Existing containers stopped." || warn "No containers were running."
 
 # ── Step 3: Pull latest images ───────────────────────────────────────────────
 log "Step 3: Pulling Docker images..."
-docker-compose pull
+$COMPOSE pull
 success "Images pulled successfully."
 
 # ── Step 4: Start cluster ────────────────────────────────────────────────────
-log "Step 4: Starting 3-node Hadoop cluster + MongoDB..."
-docker-compose up -d
+log "Step 4: Starting 3-node Hadoop cluster (HDFS + YARN) + Spark..."
+$COMPOSE up -d
 success "All containers started."
 
 # ── Step 5: Wait for NameNode to be ready ────────────────────────────────────
@@ -87,6 +93,6 @@ echo " Access Points:"
 echo "   HDFS Web UI     → http://localhost:9870"
 echo "   YARN UI         → http://localhost:8088"
 echo "   Spark Web UI    → http://localhost:8080"
-echo "   MongoDB         → localhost:27017"
+echo "   MongoDB Atlas   → (cloud — set MONGODB_ATLAS_URI in .env)"
 echo "============================================================"
 echo ""

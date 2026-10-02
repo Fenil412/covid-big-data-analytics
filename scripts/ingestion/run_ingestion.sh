@@ -41,14 +41,14 @@ python3 "$PROJECT_ROOT/src/ingestion/data_downloader.py" \
 success "Download complete."
 
 # ── Step 2: Upload to HDFS ────────────────────────────────────────────────────
-log "Step 2: Uploading data to HDFS /covid/raw ..."
+log "Step 2: Uploading data to HDFS /covid/input ..."
 python3 "$PROJECT_ROOT/src/ingestion/hdfs_uploader.py" \
-    || error "HDFS upload failed. Ensure cluster is running: bash scripts/cluster/start_cluster.sh"
+    || error "HDFS upload failed. Ensure cluster is running: bash scripts/cluster/start-cluster.sh"
 success "Upload to HDFS complete."
 
 echo ""
 echo "========================================================"
-echo "  Ingestion complete! Data is now in HDFS /covid/raw"
-echo "  Next: Submit Spark job → analytics_job.py"
+echo "  Ingestion complete! Data is now in HDFS /covid/input"
+echo "  Next: bash scripts/cluster/run-analysis.sh"
 echo "========================================================"
 echo ""
