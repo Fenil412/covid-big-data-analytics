@@ -9,14 +9,17 @@ cluster:
     - worker2
 
 hdfs:
-  raw_path: /covid/raw
+  input_path: /covid/input
+  raw_path: /covid/input
   processed_path: /covid/processed
   output_path: /covid/output
 
 mongodb:
   database: covid_analytics
   collections:
+    - global_metrics
     - country_summary
     - daily_summary
     - vaccination_summary
     - hospitalization_summary
+    - regional_summary
