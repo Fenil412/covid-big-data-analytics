@@ -1,0 +1,15 @@
+# Distributed processing
+
+spark/jobs/analytics_job.py reads the HDFS CSVs, joins epidemiology, index, vaccination, hospital, and demographic data, computes global/country/daily/vaccination/hospital/regional results, then writes Parquet under HDFS /covid/output.
+
+Windows: run-analysis.bat. Shell: bash scripts/cluster/run-analysis.sh. Spark Standalone submission allocated one executor on each live Spark worker container. The runner syncs `country_daily_summary` along with the other collections after successful completion and exits before syncing on a Spark error.
+
+The Spark image is Spark 3.3.0 with Python 3.7; optional type hints must remain Python 3.7 compatible. YARN needs HADOOP_CONF_DIR/YARN_CONF_DIR and executor requests within NodeManager limits. The YARN attempt was accepted, but did not produce verifiable new outputs in this run.
+
+Earlier host verification: the source index contained **246 country-level keys** (`aggregation_level=0`) with no missing country names. HDFS contained five source CSVs. `fsck` confirmed the 520,931,512-byte epidemiology file had four healthy blocks, each replicated to both DataNodes. An earlier Spark Standalone run registered one executor on each worker and ran the analytics transformations, but exited 137 during regional aggregation on that 3.5 GiB Docker host. At that time, `/covid/output` was observed to contain four collections dated 2026-09-30. A YARN cluster-mode attempt was rejected because the Hadoop NodeManager images do not contain `python3`; the runner therefore stays in YARN client mode by default. The distributed job was not verified complete in that run.
+
+## Final audit run — 2026-10-02
+
+`docker compose config --quiet`, `docker compose build`, and `docker compose up -d` succeeded. All ten defined services were listed by Compose; the dashboard, NameNode, ResourceManager, and both NodeManagers reported healthy. HDFS reported **2 live DataNodes**. `/covid/input` contained all five CSVs. `fsck` reported the 520,931,512-byte epidemiology file as healthy, with four blocks at replication factor 2; every block listed locations on both `hadoop-worker1` and `hadoop-worker2`. The aggregate `dfsadmin -report` also listed four under-replicated blocks overall, so the overall filesystem replication counters were not fully clean even though this input file passed `fsck`. The dashboard health endpoint returned `ok`.
+
+A new Spark standalone run registered two executors on separate Spark worker containers and prepared the global, country, daily, vaccination, hospitalization, and regional aggregations. During output/shuffle work, one executor disconnected and Spark emitted `FetchFailed` errors. The submission stalled and was interrupted; there is no successful Spark exit code and no verified fresh analytics output from this attempt. Treat distributed analytics completion as **FAIL / not verified** until a rerun exits successfully and its output schemas, dates, and values are checked. Existing Parquet output may be stale or partially written and must not be represented as current results.
