@@ -19,7 +19,8 @@ numpy>=1.24
 # --- Visualization & Dashboard ---
 matplotlib>=3.7
 plotly>=5.18
-streamlit>=1.30
+streamlit>=1.40
+kaleido>=0.2.1
 
 # --- Notebooks ---
 jupyter>=1.0
@@ -27,3 +28,6 @@ jupyter>=1.0
 # --- Testing ---
 pytest>=7.4
 responses>=0.25
+scipy>=1.11
+hypothesis[pandas]>=6.92
+openpyxl>=3.1
