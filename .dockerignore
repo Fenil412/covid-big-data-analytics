@@ -1,0 +1,32 @@
+# Never send credentials or local machine state to the Docker build context.
+.env
+.env.*
+!.env.example
+
+# Python environments and generated files
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Large downloaded inputs and local analytics outputs
+dataset/
+output/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Repository metadata, editor state, and logs
+.git/
+.idea/
+.vscode/
+*.log

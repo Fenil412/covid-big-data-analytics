@@ -1,14 +1,21 @@
 # =============================================================================
-# docker-compose.yml - Hadoop + Spark Cluster
+# docker-compose.yml — 3-Node Hadoop (HDFS + YARN) + Spark client
 # Project: COVID-19 Big Data Analytics Platform
-# Author:  Fenil Chodvadiya (Member 1 - Lead Data Engineer)
 #
-# Uses bde2020 images for proven multi-node Hadoop + Spark in Docker.
-# MongoDB is hosted on MongoDB Atlas (cloud) - no local container needed.
+# Logical layout:
+#   MASTER (hadoop-master)     : NameNode + co-located services
+#   MASTER (resourcemanager)   : ResourceManager
+#   WORKER 1 (hadoop-worker1)  : DataNode
+#   WORKER 1 (nodemanager1)    : NodeManager
+#   WORKER 2 (hadoop-worker2)  : DataNode
+#   WORKER 2 (nodemanager2)    : NodeManager
+#   spark-master               : PySpark driver / spark-submit (YARN or standalone)
 #
-# NOTE: If Docker Hub is slow, pull images manually first:
+# Pull images if needed:
 #   docker pull bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
 #   docker pull bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+#   docker pull bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+#   docker pull bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
 #   docker pull bde2020/spark-master:3.3.0-hadoop3.3
 #   docker pull bde2020/spark-worker:3.3.0-hadoop3.3
 # =============================================================================
@@ -19,42 +26,56 @@ networks:
 
 services:
 
-  # ---------------------------------------------------------------------------
-  # HDFS NameNode | Web UI: http://localhost:9870
-  # ---------------------------------------------------------------------------
+  # ── MASTER: HDFS NameNode ───────────────────────────────────────────────────
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-master
     hostname: master
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
       CLUSTER_NAME: covid-cluster
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
-      HDFS_CONF_dfs_replication: 2
-      HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check: "false"
-      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI}
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-covid_analytics}
     ports:
       - "9870:9870"
       - "9000:9000"
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
-      - ./dataset:/data/raw
       - ./.env:/opt/.env:ro
+    networks:
+      hadoop_net:
+        aliases:
+          - master
+
+  # ── MASTER: YARN ResourceManager | UI http://localhost:8088 ─────────────────
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-resourcemanager
+    hostname: resourcemanager
+    restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870 namenode:9000 datanode1:9864 datanode2:9864"
+    ports:
+      - "8088:8088"
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
     networks:
       - hadoop_net
 
-  # ---------------------------------------------------------------------------
-  # HDFS DataNode 1
-  # ---------------------------------------------------------------------------
+  # ── WORKER 1: DataNode ──────────────────────────────────────────────────────
   datanode1:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-worker1
     hostname: worker1
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
-      HDFS_CONF_dfs_replication: 2
+      SERVICE_PRECONDITION: "namenode:9870 namenode:9000"
     depends_on:
       - namenode
     volumes:
@@ -62,17 +83,34 @@ services:
     networks:
       - hadoop_net
 
-  # ---------------------------------------------------------------------------
-  # HDFS DataNode 2
-  # ---------------------------------------------------------------------------
+  # ── WORKER 1: YARN NodeManager | UI http://localhost:8042 ───────────────────
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager1
+    hostname: nodemanager1
+    restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode1:9864 resourcemanager:8088"
+    ports:
+      - "8042:8042"
+    depends_on:
+      - resourcemanager
+      - datanode1
+    networks:
+      - hadoop_net
+
+  # ── WORKER 2: DataNode ──────────────────────────────────────────────────────
   datanode2:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hadoop-worker2
     hostname: worker2
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
-      HDFS_CONF_dfs_replication: 2
+      SERVICE_PRECONDITION: "namenode:9870 namenode:9000"
     depends_on:
       - namenode
     volumes:
@@ -80,18 +118,38 @@ services:
     networks:
       - hadoop_net
 
-  # ---------------------------------------------------------------------------
-  # Spark Master | Web UI: http://localhost:8080
-  # ---------------------------------------------------------------------------
+  # ── WORKER 2: YARN NodeManager | UI http://localhost:8043 ───────────────────
+  nodemanager2:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager2
+    hostname: nodemanager2
+    restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode2:9864 resourcemanager:8088"
+    ports:
+      - "8043:8042"
+    depends_on:
+      - resourcemanager
+      - datanode2
+    networks:
+      - hadoop_net
+
+  # ── Spark: submit client + optional standalone UI http://localhost:8080 ────
   spark-master:
     image: bde2020/spark-master:3.3.0-hadoop3.3
     container_name: spark-master
     hostname: spark-master
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
       INIT_DAEMON_STEP: setup_spark
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
-      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI}
+      SPARK_MASTER: spark://spark-master:7077
+      HADOOP_CONF_DIR: /opt/spark-apps/config/hadoop
+      YARN_CONF_DIR: /opt/spark-apps/config/hadoop
+      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:-}
       MONGODB_DATABASE: ${MONGODB_DATABASE:-covid_analytics}
     ports:
       - "8080:8080"
@@ -100,22 +158,24 @@ services:
     volumes:
       - ./spark:/opt/spark-apps/spark
       - ./src:/opt/spark-apps/src
+      - ./config:/opt/spark-apps/config:ro
       - ./.env:/opt/.env:ro
     depends_on:
       - namenode
+      - resourcemanager
+      - nodemanager1
+      - nodemanager2
     networks:
       - hadoop_net
 
-  # ---------------------------------------------------------------------------
-  # Spark Workers
-  # ---------------------------------------------------------------------------
   spark-worker1:
     image: bde2020/spark-worker:3.3.0-hadoop3.3
     container_name: spark-worker1
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
       SPARK_MASTER: spark://spark-master:7077
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1G
     ports:
@@ -129,15 +189,35 @@ services:
     image: bde2020/spark-worker:3.3.0-hadoop3.3
     container_name: spark-worker2
     restart: unless-stopped
+    env_file:
+      - ./config/hadoop/hadoop.env
     environment:
       SPARK_MASTER: spark://spark-master:7077
-      CORE_CONF_fs_defaultFS: hdfs://master:9000
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1G
     ports:
       - "8082:8081"
     depends_on:
       - spark-master
+    networks:
+      - hadoop_net
+
+  # ── Streamlit dashboard (reads MongoDB Atlas + local output/ Parquet) ───────
+  dashboard:
+    build: .
+    container_name: covid-dashboard
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-covid_analytics}
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./output:/app/output:ro
+      - ./dataset:/app/dataset:ro
+    depends_on:
+      - namenode
     networks:
       - hadoop_net
 
