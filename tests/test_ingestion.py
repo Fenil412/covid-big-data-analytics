@@ -81,10 +81,10 @@ class TestDataDownloader:
 class TestHdfsUploader:
     """Tests for the hdfs_uploader module."""
 
-    def test_hdfs_raw_path_is_correct(self):
-        """HDFS raw path should match project config."""
+    def test_hdfs_input_path_is_correct(self):
+        """HDFS input path should match project config."""
         from src.ingestion.hdfs_uploader import HDFS_RAW_PATH
-        assert HDFS_RAW_PATH == "/covid/raw"
+        assert HDFS_RAW_PATH == "/covid/input"
 
     def test_upload_all_returns_empty_on_no_csv(self, tmp_path):
         """upload_all should return empty dict if no CSV files present."""
@@ -107,7 +107,7 @@ class TestHdfsUploader:
         mock_proc.stderr = ""
         mock_run.return_value = mock_proc
 
-        result = upload_file(csv_file, "/covid/raw")
+        result = upload_file(csv_file, "/covid/input")
         assert result is True
         # docker cp should have been called
         calls = [str(c) for c in mock_run.call_args_list]
